@@ -1,0 +1,5 @@
+{
+  "name": "OmniPlayer Widget",
+  "description": "A versatile music player widget supporting Local files, Spotify, and YouTube with dynamic color extraction.",
+  "requestFramePermissions": []
+}
