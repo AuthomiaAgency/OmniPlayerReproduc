@@ -81,6 +81,11 @@ export default function MusicWidget() {
     localStorage.setItem('omni_dark_mode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
+  // --- Save Visualizer Mode to LocalStorage ---
+  useEffect(() => {
+    localStorage.setItem('omni_visualizer', visualizerMode);
+  }, [visualizerMode]);
+
   // --- Mutually Exclusive Shuffle/Repeat ---
   const toggleShuffle = () => {
     const nextShuffle = !isShuffle;
@@ -353,23 +358,8 @@ export default function MusicWidget() {
   };
 
   // --- Dynamic CSS Variables for Theming ---
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--c-bg', colors.bg);
-    root.style.setProperty('--c-acc', colors.accent);
-    root.style.setProperty('--c-pastel', isDarkMode ? '#1a1a1a' : colors.pastel);
-    root.style.setProperty('--c-dark', colors.dark);
-    root.style.setProperty('--t-bg', '#191919');
-    root.style.setProperty('--t-text', '#ffffff');
-    root.style.setProperty('--t-border', 'rgba(255,255,255,0.1)');
-    root.style.setProperty('--t-muted', 'rgba(255,255,255,0.6)');
-    root.style.setProperty('--t-track', 'rgba(255,255,255,0.1)');
-    root.style.setProperty('--t-fill', '#ffffff');
+  // Theme is now managed via CSS variables passed to the main div
 
-    document.body.style.backgroundColor = '#191919';
-    document.body.style.color = '#ffffff';
-    document.body.style.transition = 'background-color 0.5s ease, color 0.5s ease';
-  }, [colors, isDarkMode]);
 
   const widgetStyle = {} as React.CSSProperties;
 
@@ -383,9 +373,16 @@ export default function MusicWidget() {
     <div 
       className={`@container w-full h-full flex flex-col transition-all duration-500 ease-in-out font-sans relative ${isDarkMode ? 'dark' : ''}`}
       style={{ 
+        '--t-bg': isDarkMode ? '#191919' : '#ffffff',
+        '--t-text': isDarkMode ? '#ffffff' : '#000000',
+        '--t-border': isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        '--t-muted': isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+        '--t-track': isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        '--t-fill': isDarkMode ? '#ffffff' : '#000000',
+        '--c-pastel': isDarkMode ? '#252525' : colors.pastel,
         backgroundColor: 'var(--t-bg)', 
         color: 'var(--t-text)'
-      }}
+      } as React.CSSProperties}
     >
       {/* Hidden YouTube Player */}
       <div id="youtube-hidden-player" className="absolute opacity-0 pointer-events-none w-0 h-0" />
