@@ -359,15 +359,15 @@ export default function MusicWidget() {
     root.style.setProperty('--c-acc', colors.accent);
     root.style.setProperty('--c-pastel', isDarkMode ? '#1a1a1a' : colors.pastel);
     root.style.setProperty('--c-dark', colors.dark);
-    root.style.setProperty('--t-bg', isDarkMode ? '#0f0f0f' : '#ffffff');
-    root.style.setProperty('--t-text', isDarkMode ? '#ffffff' : '#000000');
-    root.style.setProperty('--t-border', isDarkMode ? '#333333' : '#e5e5e5');
-    root.style.setProperty('--t-muted', isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)');
-    root.style.setProperty('--t-track', isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)');
-    root.style.setProperty('--t-fill', isDarkMode ? '#ffffff' : '#000000');
+    root.style.setProperty('--t-bg', '#191919');
+    root.style.setProperty('--t-text', '#ffffff');
+    root.style.setProperty('--t-border', 'rgba(255,255,255,0.1)');
+    root.style.setProperty('--t-muted', 'rgba(255,255,255,0.6)');
+    root.style.setProperty('--t-track', 'rgba(255,255,255,0.1)');
+    root.style.setProperty('--t-fill', '#ffffff');
 
-    document.body.style.backgroundColor = isDarkMode ? '#0f0f0f' : '#ffffff';
-    document.body.style.color = isDarkMode ? '#ffffff' : '#000000';
+    document.body.style.backgroundColor = '#191919';
+    document.body.style.color = '#ffffff';
     document.body.style.transition = 'background-color 0.5s ease, color 0.5s ease';
   }, [colors, isDarkMode]);
 
