@@ -13,6 +13,7 @@ export default function MusicWidget() {
   const [queue, setQueue] = useState<Track[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const isInitialLoadRef = useRef(true);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -57,6 +58,7 @@ export default function MusicWidget() {
         const ytTracks = parsedQueue.filter(t => t.source === 'youtube');
         if (ytTracks.length > 0) {
           setQueue(ytTracks);
+          setIsPlaying(false); // Ensure paused on load
           if (savedIndex) {
             const idx = parseInt(savedIndex, 10);
             setCurrentIndex(idx >= 0 && idx < ytTracks.length ? idx : 0);
@@ -125,9 +127,19 @@ export default function MusicWidget() {
           width: '0',
           playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, rel: 0 },
           events: {
-            onReady: () => setYtReady(true),
+            onReady: () => {
+              setYtReady(true);
+              if (ytPlayerRef.current?.pauseVideo) ytPlayerRef.current.pauseVideo();
+            },
             onStateChange: (e: any) => {
-              if (e.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
+              if (e.data === window.YT.PlayerState.PLAYING) {
+                if (isInitialLoadRef.current) {
+                  isInitialLoadRef.current = false;
+                  ytPlayerRef.current.pauseVideo();
+                  return;
+                }
+                setIsPlaying(true);
+              }
               if (e.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
               if (e.data === window.YT.PlayerState.ENDED) handleNextRef.current();
             }
