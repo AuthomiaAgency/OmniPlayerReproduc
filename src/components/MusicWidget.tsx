@@ -195,7 +195,11 @@ export default function MusicWidget() {
       
       if (ytPlayerRef.current?.loadVideoById) {
         ytPlayerRef.current.loadVideoById(currentTrack.id);
-        if (isPlaying) ytPlayerRef.current.playVideo();
+        if (isPlaying) {
+          ytPlayerRef.current.playVideo();
+        } else {
+          ytPlayerRef.current.pauseVideo();
+        }
       }
     }
   }, [currentTrack, ytReady]);
