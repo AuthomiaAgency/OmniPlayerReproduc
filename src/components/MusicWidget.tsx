@@ -344,7 +344,7 @@ export default function MusicWidget() {
     setQueue(prev => [...prev, ...newTracks]);
     if (currentIndex === -1) {
       setCurrentIndex(queue.length);
-      setIsPlaying(true);
+      setIsPlaying(false);
     }
     setIsLoading(false);
     setShowSettings(false);
@@ -628,7 +628,7 @@ export default function MusicWidget() {
                       setQueue(prev => [...prev, ...pendingTracks]);
                       if (currentIndex === -1) {
                         setCurrentIndex(queue.length);
-                        setIsPlaying(true);
+                        setIsPlaying(false);
                       }
                       setPendingTracks([]);
                       setInputValue('');
