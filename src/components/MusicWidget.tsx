@@ -828,6 +828,11 @@ export default function MusicWidget() {
             ))
           )}
         </div>
+        <div className="p-4 text-center border-t border-black/5">
+          <p className="text-[10px] uppercase tracking-widest text-black/40">
+            Powered by <a href="https://authomia.cloud" target="_blank" rel="noopener noreferrer" className="text-black/60 hover:text-black transition-colors font-bold">Authomia</a>
+          </p>
+        </div>
       </div>
     </div>
   );
