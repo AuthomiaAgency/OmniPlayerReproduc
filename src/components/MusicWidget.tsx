@@ -13,7 +13,6 @@ export default function MusicWidget() {
   const [queue, setQueue] = useState<Track[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
-  const isInitialLoadRef = useRef(true);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -132,14 +131,7 @@ export default function MusicWidget() {
               if (ytPlayerRef.current?.pauseVideo) ytPlayerRef.current.pauseVideo();
             },
             onStateChange: (e: any) => {
-              if (e.data === window.YT.PlayerState.PLAYING) {
-                if (isInitialLoadRef.current) {
-                  isInitialLoadRef.current = false;
-                  ytPlayerRef.current.pauseVideo();
-                  return;
-                }
-                setIsPlaying(true);
-              }
+              if (e.data === window.YT.PlayerState.PLAYING) setIsPlaying(true);
               if (e.data === window.YT.PlayerState.PAUSED) setIsPlaying(false);
               if (e.data === window.YT.PlayerState.ENDED) handleNextRef.current();
             }
@@ -193,12 +185,11 @@ export default function MusicWidget() {
     } else if (currentTrack.source === 'youtube' && ytReady) {
       if (audioRef.current) audioRef.current.pause();
       
-      if (ytPlayerRef.current?.loadVideoById) {
-        ytPlayerRef.current.loadVideoById(currentTrack.id);
+      if (ytPlayerRef.current?.loadVideoById && ytPlayerRef.current?.cueVideoById) {
         if (isPlaying) {
-          ytPlayerRef.current.playVideo();
+          ytPlayerRef.current.loadVideoById(currentTrack.id);
         } else {
-          ytPlayerRef.current.pauseVideo();
+          ytPlayerRef.current.cueVideoById(currentTrack.id);
         }
       }
     }
