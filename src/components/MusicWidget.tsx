@@ -372,6 +372,13 @@ export default function MusicWidget() {
     
     let successCount = 0;
 
+    const cobaltInstances = [
+      'https://api.cobalt.tools',
+      'https://co.wuk.sh',
+      'https://cobalt.qewertyy.dev',
+      'https://api.cobalt.tools/api/json'
+    ];
+
     for (let i = 0; i < queue.length; i++) {
       const track = queue[i];
       setDownloadProgress(Math.round((i / queue.length) * 100));
@@ -381,28 +388,48 @@ export default function MusicWidget() {
           folder?.file(`${track.title}.mp3`, track.file);
           successCount++;
         } else if (track.source === 'youtube') {
-          const res = await fetch('https://api.cobalt.tools/api/json', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: `https://www.youtube.com/watch?v=${track.id}`,
-              isAudioOnly: true,
-              aFormat: 'mp3',
-              downloadMode: 'audio',
-              audioFormat: 'mp3'
-            })
-          });
+          let downloaded = false;
           
-          if (res.ok) {
-            const data = await res.json();
-            if (data.url) {
-              const audioRes = await fetch(data.url);
-              const blob = await audioRes.blob();
-              folder?.file(`${track.title}.mp3`, blob);
-              successCount++;
+          for (const instance of cobaltInstances) {
+            if (downloaded) break;
+            try {
+              const isV6 = instance.endsWith('/json');
+              const payload = isV6 
+                ? { url: `https://www.youtube.com/watch?v=${track.id}`, isAudioOnly: true, aFormat: 'mp3' }
+                : { url: `https://www.youtube.com/watch?v=${track.id}`, downloadMode: 'audio', audioFormat: 'mp3' };
+                
+              const res = await fetch(instance, {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+              });
+              
+              if (res.ok) {
+                const data = await res.json();
+                const audioUrl = data.url || data.audio;
+                if (audioUrl) {
+                  let blob: Blob;
+                  try {
+                    const audioRes = await fetch(audioUrl);
+                    if (!audioRes.ok) throw new Error("Direct fetch failed");
+                    blob = await audioRes.blob();
+                  } catch (corsErr) {
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`;
+                    const audioRes = await fetch(proxyUrl);
+                    blob = await audioRes.blob();
+                  }
+                  
+                  const safeTitle = track.title.replace(/[^a-z0-9]/gi, '_');
+                  folder?.file(`${safeTitle}.mp3`, blob);
+                  successCount++;
+                  downloaded = true;
+                }
+              }
+            } catch (err) {
+              console.warn(`Instance ${instance} failed for ${track.title}`);
             }
           }
         }
@@ -422,7 +449,7 @@ export default function MusicWidget() {
         alert("Hubo un error al generar el archivo ZIP.");
       }
     } else {
-      alert("No se pudo descargar ninguna canción. Es posible que las descargas de YouTube estén bloqueadas temporalmente por el servidor de conversión.");
+      alert("No se pudo descargar ninguna canción. Los servidores de conversión podrían estar bloqueados temporalmente.");
     }
     
     setIsDownloading(false);

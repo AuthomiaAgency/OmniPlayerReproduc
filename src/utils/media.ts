@@ -75,6 +75,7 @@ export const extractColors = (imageUrl: string): Promise<{ bg: string; accent: s
 };
 
 export const parseYouTubeUrl = async (url: string): Promise<Track[]> => {
+  const isExplicitPlaylist = url.includes('/playlist?list=');
   const listMatch = url.match(/[?&]list=([^#\&\?]+)/i);
   const videoMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
   
@@ -83,8 +84,11 @@ export const parseYouTubeUrl = async (url: string): Promise<Track[]> => {
   
   if (!videoId && !playlistId) return [];
 
+  // If it's explicitly a playlist OR it has a list but NO video ID, fetch playlist
+  const shouldFetchPlaylist = playlistId && (isExplicitPlaylist || !videoId);
+
   // If it's a playlist, expand it into individual tracks
-  if (playlistId) {
+  if (shouldFetchPlaylist) {
     const pipedInstances = [
       'https://pipedapi.kavin.rocks',
       'https://pipedapi.tokhmi.xyz',
