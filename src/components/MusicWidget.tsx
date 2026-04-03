@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, ListMusic, Folder, X, Youtube, Volume2, Settings, Plus, PlayCircle, Trash2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, ListMusic, Folder, X, Youtube, Volume2, Settings, Plus, PlayCircle, Trash2, Download } from 'lucide-react';
 import { Track, extractColors, parseUniversalUrl, readLocalFile } from '../utils/media';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 declare global {
   interface Window {
@@ -28,6 +30,8 @@ export default function MusicWidget() {
     return saved ? JSON.parse(saved) : false;
   });
   const [pendingTracks, setPendingTracks] = useState<Track[]>([]);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
   const [visualizerMode, setVisualizerMode] = useState<'cover' | 'video' | 'disk'>(() => {
     return (localStorage.getItem('omni_visualizer') as any) || 'cover';
   });
@@ -314,10 +318,11 @@ export default function MusicWidget() {
     setIsLoading(true);
     
     // Split by whitespace or commas to allow multiple URLs
-    const urls = inputValue.split(/[\s,]+/).filter(url => url.trim().startsWith('http'));
+    const urls = inputValue.split(/[\s,]+/).filter(url => url.trim().length > 0);
     let allNewTracks: Track[] = [];
 
-    for (const url of urls) {
+    for (let url of urls) {
+      if (!url.startsWith('http')) url = 'https://' + url;
       try {
         const tracks = await parseUniversalUrl(url.trim());
         if (tracks && tracks.length > 0) {
@@ -355,6 +360,73 @@ export default function MusicWidget() {
     }
     setIsLoading(false);
     setShowSettings(false);
+  };
+
+  const downloadAllTracks = async () => {
+    if (queue.length === 0) return;
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    
+    const zip = new JSZip();
+    const folder = zip.folder("Authomia_Music");
+    
+    let successCount = 0;
+
+    for (let i = 0; i < queue.length; i++) {
+      const track = queue[i];
+      setDownloadProgress(Math.round((i / queue.length) * 100));
+      
+      try {
+        if (track.source === 'local' && track.file) {
+          folder?.file(`${track.title}.mp3`, track.file);
+          successCount++;
+        } else if (track.source === 'youtube') {
+          const res = await fetch('https://api.cobalt.tools/api/json', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: `https://www.youtube.com/watch?v=${track.id}`,
+              isAudioOnly: true,
+              aFormat: 'mp3',
+              downloadMode: 'audio',
+              audioFormat: 'mp3'
+            })
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            if (data.url) {
+              const audioRes = await fetch(data.url);
+              const blob = await audioRes.blob();
+              folder?.file(`${track.title}.mp3`, blob);
+              successCount++;
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`Error downloading track ${track.title}:`, e);
+      }
+    }
+    
+    setDownloadProgress(100);
+    
+    if (successCount > 0) {
+      try {
+        const content = await zip.generateAsync({ type: "blob" });
+        saveAs(content, "Authomia_Music.zip");
+      } catch (e) {
+        console.error("Error generating zip:", e);
+        alert("Hubo un error al generar el archivo ZIP.");
+      }
+    } else {
+      alert("No se pudo descargar ninguna canción. Es posible que las descargas de YouTube estén bloqueadas temporalmente por el servidor de conversión.");
+    }
+    
+    setIsDownloading(false);
+    setDownloadProgress(0);
   };
 
   const formatTime = (seconds: number) => {
@@ -782,45 +854,68 @@ export default function MusicWidget() {
           {queue.length === 0 ? (
             <p className="font-bold text-sm text-center mt-8" style={{ color: 'var(--t-muted)' }}>La cola está vacía</p>
           ) : (
-            queue.map((track, idx) => (
-              <div 
-                key={`${track.id}-${idx}`}
-                ref={el => queueItemRefs.current[idx] = el}
-                onClick={() => {
-                  setCurrentIndex(idx);
-                  setIsPlaying(true);
-                  setShowQueue(false);
-                }}
-                className={`flex items-center space-x-3 p-2 rounded-lg border cursor-pointer transition-all ${idx === currentIndex ? '' : 'border-transparent hover:border-black/20'}`}
-                style={{ 
-                  borderColor: idx === currentIndex ? 'var(--t-border)' : 'transparent',
-                  backgroundColor: idx === currentIndex ? 'var(--c-pastel)' : 'transparent'
-                }}
-              >
-                <div className="relative w-12 h-12 shrink-0 border rounded overflow-hidden" style={{ borderColor: 'var(--t-border)' }}>
-                  <img src={track.coverUrl} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
-                  <div className="absolute bottom-0 right-0 p-0.5" style={{ backgroundColor: 'var(--t-bg)' }}>
-                    {renderSourceIcon(track.source, 'var(--t-text)')}
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-bold truncate`} style={{ color: idx === currentIndex ? 'var(--t-text)' : 'var(--t-muted)' }}>
-                    {track.title}
-                  </p>
-                  <p className="text-xs font-bold uppercase truncate" style={{ color: 'var(--t-muted)' }}>
-                    {track.source === 'local' ? '' : track.artist}
-                  </p>
-                </div>
-                <button 
-                  onClick={(e) => removeFromQueue(e, idx)}
-                  className="p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
-                  style={{ color: 'var(--t-muted)' }}
-                  title="Eliminar de la cola"
+            <>
+              {queue.map((track, idx) => (
+                <div 
+                  key={`${track.id}-${idx}`}
+                  ref={el => queueItemRefs.current[idx] = el}
+                  onClick={() => {
+                    setCurrentIndex(idx);
+                    setIsPlaying(true);
+                    setShowQueue(false);
+                  }}
+                  className={`flex items-center space-x-3 p-2 rounded-lg border cursor-pointer transition-all ${idx === currentIndex ? '' : 'border-transparent hover:border-black/20'}`}
+                  style={{ 
+                    borderColor: idx === currentIndex ? 'var(--t-border)' : 'transparent',
+                    backgroundColor: idx === currentIndex ? 'var(--c-pastel)' : 'transparent'
+                  }}
                 >
-                  <Trash2 size={16} />
+                  <div className="relative w-12 h-12 shrink-0 border rounded overflow-hidden" style={{ borderColor: 'var(--t-border)' }}>
+                    <img src={track.coverUrl} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                    <div className="absolute bottom-0 right-0 p-0.5" style={{ backgroundColor: 'var(--t-bg)' }}>
+                      {renderSourceIcon(track.source, 'var(--t-text)')}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-bold truncate`} style={{ color: idx === currentIndex ? 'var(--t-text)' : 'var(--t-muted)' }}>
+                      {track.title}
+                    </p>
+                    <p className="text-xs font-bold uppercase truncate" style={{ color: 'var(--t-muted)' }}>
+                      {track.source === 'local' ? '' : track.artist}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={(e) => removeFromQueue(e, idx)}
+                    className="p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
+                    style={{ color: 'var(--t-muted)' }}
+                    title="Eliminar de la cola"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              
+              <div className="pt-4 pb-2 px-2">
+                <button
+                  onClick={downloadAllTracks}
+                  disabled={isDownloading}
+                  className="w-full py-3 px-4 rounded-xl font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--t-text)', color: 'var(--t-bg)' }}
+                >
+                  {isDownloading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Descargando... {downloadProgress}%
+                    </>
+                  ) : (
+                    <>
+                      <Download size={18} />
+                      Descargar todo en MP3
+                    </>
+                  )}
                 </button>
               </div>
-            ))
+            </>
           )}
         </div>
         <div className="p-4 text-center border-t border-black/5">
